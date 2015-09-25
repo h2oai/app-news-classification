@@ -19,7 +19,8 @@ import org.apache.spark.sql.DataFrame
 
 def isHeader(line: String) = line.contains("category")
 // Load and split data based on ","
-val data = sc.textFile("/Users/avniwadhwa/Desktop/WholeOtherTechCrunch.csv").filter(x => !isHeader(x)).map(d => d.split(',')).filter(row => row.length == 5)
+val data = sc.textFile("/Users/avniwadhwa/Desktop/MeetUp/ExperimentalNewOtherTechCrunch.csv").filter(x => !isHeader(x)).map(d => d.split(',')).filter(row => row.length == 5)
+
 
 // Extract job category from job description
 val articleAuthor = data.map(l => l(3))
@@ -147,7 +148,7 @@ val h2oContext = new H2OContext(sc).start()
 //val resultRDD: DataFrame = YYYlabels.zip(textVectors).zip(titleVectors).map(v => TECHCRUNCH(v._1._1, v._1._2, v._2)).toDF
 val resultRDD: DataFrame = YYYlabels.zip(YYYauthor).zip(textVectors).map(v => {
   val author = v._1._2
-  val a = if (topTenAuthors.contains(author)) author else "Michal"
+  val a = if (topTenAuthors.contains(author)) author else "nothing"
   TECHCRUNCH(v._1._1, a, v._2)}
   ).toDF
 
@@ -156,3 +157,23 @@ val table:H2OFrame = h2oContext.asH2OFrame(resultRDD)
 
 // OPEN FLOW UI
 h2oContext.openFlow
+
+/// ====
+// Input data
+val testAuthor = "Michael Seo"
+val testText = "The Infinity Cell is a kinetic charger for the iPhone that uses your bodyÕs movement to generate electricity. The current prototype for the Infinity Cell is a crude 3D printed rectangle roughly the size of a pack of cigarettes linked up to the iPhone with a cable. The plan is to create a more streamlined version during the productÕs Kickstarter campaign."
+// Tokenize the text
+val testTextTokens = token(testText).toSeq
+// Use word2vec model to transform tokenized text to feature vector
+val testTextVector = new DenseVector(divArray(testTextTokens.map(m => wordToVector(m, model4Text).toArray).reduceLeft(sumArray), testTextTokens.length))
+
+// Transforming input data into H2OFrame
+val testRow = TECHCRUNCH(null, testAuthor, testTextVector)
+val testRowRdd = sc.parallelize(Seq(testRow)).toDF
+val testRowHf: H2OFrame = h2oContext.asH2OFrame(testRowRdd)
+// Removing 1st column, since there is a bug in H2O scoring
+testRowHf.remove(0)
+testRowHf.update(null)
+
+
+
